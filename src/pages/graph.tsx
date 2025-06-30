@@ -246,6 +246,11 @@ const AdditionModal = ({ enabled, onClose, nodes, setNodes, templates, setTempla
     });
   };
 
+  useEffect(() => {
+    setValueNode("caracteristicasString", {});
+    setValueNode("caracteristicasInteiros", {});
+  }, [selectedTemplate])
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'node':
