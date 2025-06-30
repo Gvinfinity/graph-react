@@ -22,7 +22,7 @@ async function create(data: object): Promise<INode> {
     return response.data;
 }
 
-async function update(nodeId: number, data: object): Promise<INode> {
+async function update(nodeId: string, data: object): Promise<INode> {
     let response;
     try {
         response = await Api().put(`/vertices/${nodeId}`, data);

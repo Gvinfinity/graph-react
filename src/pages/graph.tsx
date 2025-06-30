@@ -3,7 +3,7 @@ import "@react-sigma/core/lib/style.css";
 import { MultiDirectedGraph } from "graphology";
 import { LayoutForceAtlas2Control } from "@react-sigma/layout-forceatlas2";
 import { Dispatch, FC, SetStateAction, useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { FieldValues, useForm, UseFormReturn } from "react-hook-form";
 import TemplatesService, { ITemplate } from "../services/templates/TemplatesService";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -11,14 +11,19 @@ import Select, { MultiValue } from "react-select";
 import NodeService, { INode } from "../services/node/NodeService";
 
 // Component to display node properties
-const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNodes: Dispatch<SetStateAction<INode[]>> }> = ({ nodeId, templates, setNodes }) => {
+const NodeProperties: FC<{ defaultVizinhos: string[], campaignId: string | null, nodeId: string | null, templates: ITemplate[], setNodes: Dispatch<SetStateAction<INode[]>>, formHook: UseFormReturn<FieldValues, any, FieldValues> }> = ({ defaultVizinhos, campaignId, nodeId, templates, setNodes, formHook }) => {
   const sigma = useSigma();
   const [extendInfo, setExtendInfo] = useState(false);
+  const [updateModal, setUpdateModal] = useState(false);
 
+  const { register, handleSubmit, watch, setValue, reset } = formHook;
+
+  
   if (!nodeId || !sigma.getGraph().hasNode(nodeId)) return null;
-
+  
   const attributes = sigma.getGraph().getNodeAttributes(nodeId);
-
+  const nodes = sigma.getGraph().nodeEntries();
+  
   const onSeeInfo = () => {
     setExtendInfo(!extendInfo);
   };
@@ -35,8 +40,111 @@ const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNod
     });
   }
 
+  const onUpdate = (data: any) => {
+    data.id = nodeId;
+    data.campanhaId = campaignId;
+    data.templateId = attributes.templateId;
+    if (data.vizinhos) {
+      data.vizinhos = data.vizinhos.map((vizinho: any) => vizinho.value);
+    } else {
+      data.vizinhos = [];
+    }
+    data.nome = attributes.nome;
+    data.descricao = attributes.descricao;
+
+    setUpdateModal(!updateModal);
+    if (updateModal) {
+      NodeService.update(nodeId, data).then((updatedNode) => {
+        toast.success("Nó atualizado com sucesso!");
+        setNodes(prevNodes => prevNodes.map(node => node.id === updatedNode.id ? updatedNode : node));
+        setUpdateModal(false);
+      }).catch((error) => {
+        console.error("Error updating node:", error);
+        toast.error("Erro ao atualizar nó.");
+      });
+    }
+
+    reset();
+    setValue("vizinhos", []);
+  };
+
   return (
     <>
+      {updateModal && (
+        <>
+          <div className="absolute top-0 left-0 w-full h-full bg-gray-400/40 z-30" onClick={() => setUpdateModal(false)}>
+            <div className="flex items-center justify-center h-full">
+              <div className="bg-white p-4 rounded-lg shadow-lg max-w-md w-full max-h-4/5 overflow-y-scroll" onClick={(e) => e.stopPropagation()}>
+                <h2 className="text-xl font-bold mb-2 text-center">Atualizar Nó</h2>
+                <form onSubmit={handleSubmit(onUpdate)} className="flex flex-col gap-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Características Numéricas:</h3>
+                    <table className="w-full mb-4">
+                      <thead>
+                        <tr>
+                          <th className="border p-2">Característica</th>
+                          <th className="border p-2">Valor</th>
+                          <th className="border p-2">Limite Superior</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attributes.caracteristicasInteiros && Object.entries(attributes.caracteristicasInteiros).map(([key, value]: [string, any]) => (
+                          <tr key={key}>
+                            <td className="border p-2">{key}</td>
+                            <td className="border p-2">
+                              <input type="number" {...register(`caracteristicasInteiros.${key}.0`)} defaultValue={value.first} className="border rounded w-full p-2" />
+                            </td>
+                            <td className="border p-2">
+                              <input type="number" {...register(`caracteristicasInteiros.${key}.1`)} defaultValue={value.second} className="border rounded w-full p-2" />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    <h3 className="font-semibold mb-2">Características Textuais:</h3>
+                    <table className="w-full mb-4">
+                      <thead>
+                        <tr>
+                          <th className="border p-2">Característica</th>
+                          <th className="border p-2">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attributes.caracteristicasString && Object.entries(attributes.caracteristicasString as Record<string, string>).map(([key, value]) => (
+                          <tr key={key}>
+                            <td className="border p-2">{key}</td>
+                            <td className="border p-2">
+                              <input type="text" {...register(`caracteristicasString.${key}`)} defaultValue={value} className="border rounded w-full p-2" />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  
+                    <label className="block mb-2">
+                      Vizinhos:
+                      <Select
+                        isMulti
+                        options={Array.from(nodes).filter((n) => n.node != nodeId).map(t => ({ label: t.attributes.label, value: t.node }))}
+                        value={watch("vizinhos") || []}
+                        defaultValue={defaultVizinhos}
+                        onChange={(selected: MultiValue<any>) => {
+                          setValue("vizinhos", selected);
+                        }}
+                        className="mb-4"
+                      />
+                    </label>
+                  </div>
+                  <button type="button" className="bg-blue-600 p-1 rounded text-white mx-auto cursor-pointer hover:bg-blue-500 transition-colors duration-300" onClick={handleSubmit(onUpdate)}>
+                    Atualizar
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
       { extendInfo ? (
         <div className="absolute top-0 left-0 w-full h-full bg-gray-400/40 z-20" onClick={() => setExtendInfo(false)}>
           <div className="flex items-center justify-center h-full">
@@ -62,9 +170,6 @@ const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNod
                   </li>
                 ))}
               </ul>
-              {/* <h3 className="text-lg font-semibold mb-2">Características Textuais:</h3> */}
-              {/* <ul className="list-disc pl-5 mb-4">
-              </ul> */}
               <h3 className="text-lg font-semibold mb-2">Vizinhos:</h3>
               <ul className="list-disc pl-5 mb-4">
                 {attributes.vizinhos && attributes.vizinhos.map((vizinho: string) =>  (
@@ -73,8 +178,11 @@ const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNod
                   </li>
                 ))}
               </ul>
-              <button className="bg-amber-600 p-1 rounded-xl text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={onDeleteNode}>
+              <button className="bg-amber-600 p-1 rounded text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={onDeleteNode}>
                 Deletar Nó
+              </button>
+              <button className="bg-blue-600 ml-2 p-1 rounded text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={() => setUpdateModal(true)}>
+                Atualizar Nó
               </button>
             </div>
           </div>
@@ -88,7 +196,7 @@ const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNod
             <ul style={{ listStyleType: "none", padding: 0 }}>
               {attributes.descricao}
             </ul>
-            <button className="bg-amber-600 p-1 rounded-xl text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={onSeeInfo}>
+            <button className="bg-amber-600 p-1 rounded text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={onSeeInfo}>
               Ver mais...
             </button>
           </div>
@@ -102,8 +210,21 @@ const NodeProperties: FC<{ nodeId: string | null, templates: ITemplate[], setNod
 const GraphEvents = ({ templates, setNodes }: { templates: ITemplate[], setNodes: Dispatch<SetStateAction<INode[]>> }) => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
+  const [defaultVizinhos, setDefaultVizinhos] = useState<string[]>([]);
   const sigma = useSigma();
   const registerEvents = useRegisterEvents();
+  const { state } = useLocation();
+  
+  const FormHook = useForm();
+
+  useEffect(() => {
+    if (selectedNode) {
+      const vizinhosIds = sigma.getGraph().getNodeAttribute(selectedNode, "vizinhos") || [];
+      const vizinhos = vizinhosIds.map((v: string) => ({ label: sigma.getGraph().getNodeAttribute(v, 'nome') || `Nó ${v}`, value: v }));
+      setDefaultVizinhos(vizinhos);
+      FormHook.setValue("vizinhos", vizinhos)
+    }
+  }, [selectedNode, sigma]);
 
   useEffect(() => {
     // Register the events
@@ -146,7 +267,7 @@ const GraphEvents = ({ templates, setNodes }: { templates: ITemplate[], setNodes
     });
   }, [registerEvents, sigma, draggedNode]);
 
-  return <NodeProperties nodeId={selectedNode} templates={templates} setNodes={setNodes} />;
+  return <NodeProperties campaignId={state.campaignId} nodeId={selectedNode} templates={templates} setNodes={setNodes} defaultVizinhos={defaultVizinhos} formHook={FormHook} />;
 };
 
 const Graph = ({ nodes, colors }: { nodes: INode[], colors: Map<number, string> }) => {
@@ -175,7 +296,7 @@ const Graph = ({ nodes, colors }: { nodes: INode[], colors: Map<number, string> 
 
     nodes.forEach((node) => {
       node.vizinhos.forEach((vizinho) => {
-        if (graph.hasNode(vizinho)) {
+        if (graph.hasNode(vizinho) && !graph.hasEdge(node.id, vizinho)) {
           graph.addEdge(node.id, vizinho);
         }
       });
@@ -484,7 +605,7 @@ export const GraphPage: FC = () => {
       <div
         className="absolute z-10 top-2 left-2 w-fit h-1/12 p-4 rounded-sm bg-white shadow-md border-1 border-gray-200 flex flex-col gap-2 items-center justify-center"
       >
-        <button className="bg-amber-600 p-1 rounded-xl text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={() => setIsAdditionModalOpen(true)}>
+        <button className="bg-amber-600 p-1 rounded text-white mx-auto cursor-pointer hover:bg-amber-500 transition-colors duration-300" onClick={() => setIsAdditionModalOpen(true)}>
           + Adicionar
         </button>
       </div>
