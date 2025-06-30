@@ -586,7 +586,7 @@ export const GraphPage: FC = () => {
     if (!state || !state.campaignId) {
       navigate("/");
     }
-  }, [state]);
+  }, [state.campaignId, navigate, state]);
 
 
   useEffect(() => {
