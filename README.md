@@ -45,7 +45,7 @@ Este projeto foi desenvolvido pelas seguintes pessoas e mantido por esses [incr�
 | [Gvinfinity](https://github.com/gvinfinity)                                                         | [Leanchec](https://github.com/leanchec)                                                            | [Okynaua](https://github.com/Okynaua)                                                              | [Fegayotto](https://github.com/Fegayotto)                                                          |
 
 ## 🤝 Contribuir
-Contribuições, issues e pedidos de features são bem-vindos!<br />Sinta-se livre para checar a [página de issues](https://github.com/ifpeopensource/modelo/issues). 
+Contribuições, issues e pedidos de features são bem-vindos!<br />Sinta-se livre para checar a [página de issues](https://github.com/gvinfinity/graph-react/issues). 
 - Crie um fork;
 - Crie um branch com a sua feature: `git checkout -b my-feature`;
 - Faça um commit com as mudanças: `git commit -m 'feat: My new feature'`;
