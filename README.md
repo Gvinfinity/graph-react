@@ -33,7 +33,7 @@ Este repositório contém apenas o frontend da aplicação, o backend está hosp
     <li>Instale as dependências usando <code>npm install</code></li>
     <li>Configure o arquivo de ambiente <code>.env</code> com a URL do backend</li>
     <li>Execute o projeto com <code>npm start</code></li>
-    <li>Acesse a aplicação em <code>http://localhost:3000</code></li>
+    <li>Acesse a aplicação em <code>http://localhost:5173</code></li>
 </ol>
 
 ## Time
